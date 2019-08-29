@@ -21,9 +21,10 @@ class BaseNetwork(nn.Module):
         num_params = 0
         for param in self.parameters():
             num_params += param.numel()
-        print('Network [%s] was created. Total number of parameters: %.1f million. '
-              'To see the architecture, do print(network).'
-              % (type(self).__name__, num_params / 1000000))
+        print(
+            'Network [%s] was created. Total number of parameters: %.1f million. '
+            'To see the architecture, do print(network).' %
+            (type(self).__name__, num_params / 1000000))
 
     def init_weights(self, init_type='normal', gain=0.02):
         def init_func(m):
@@ -33,7 +34,8 @@ class BaseNetwork(nn.Module):
                     init.normal_(m.weight.data, 1.0, gain)
                 if hasattr(m, 'bias') and m.bias is not None:
                     init.constant_(m.bias.data, 0.0)
-            elif hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
+            elif hasattr(m, 'weight') and (classname.find('Conv') != -1
+                                           or classname.find('Linear') != -1):
                 if init_type == 'normal':
                     init.normal_(m.weight.data, 0.0, gain)
                 elif init_type == 'xavier':
@@ -47,7 +49,9 @@ class BaseNetwork(nn.Module):
                 elif init_type == 'none':  # uses pytorch's default init method
                     m.reset_parameters()
                 else:
-                    raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
+                    raise NotImplementedError(
+                        'initialization method [%s] is not implemented' %
+                        init_type)
                 if hasattr(m, 'bias') and m.bias is not None:
                     init.constant_(m.bias.data, 0.0)
 

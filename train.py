@@ -1,74 +1,136 @@
-"""
-Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
-Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
-"""
+import argparse
+import os
+import random
+import time
+from contextlib import closing
 
-import sys
-from collections import OrderedDict
-from options.train_options import TrainOptions
-import data
-from util.iter_counter import IterationCounter
-from util.visualizer import Visualizer
-from trainers.pix2pix_trainer import Pix2PixTrainer
+import torch
+from tqdm import tqdm
+from datasets import create_dataloader
+from models import create_model
+from options import create_options
+from util import data_utils, train_utils
 
-# parse options
-opt = TrainOptions().parse()
+parser = argparse.ArgumentParser(description='Training')
+parser.add_argument('--opt_name', required=True, help='options file name')
+parser.add_argument('--batch_size', required=True, type=int)
+parser.add_argument('--gpu_ids',
+                    type=str,
+                    default='0,1,2,3',
+                    help='gpu id used')
+parser.add_argument('--continue',
+                    action='store_true',
+                    help='continue to train or train from start')
+parser.add_argument('--mode', default='train', help='train mode')
+args = parser.parse_args()
 
-# print options to help debugging
-print(' '.join(sys.argv))
+# set global variable
+manual_seed = 99
+print("Random Seed:", manual_seed)
+random.seed(manual_seed)
+torch.manual_seed(manual_seed)
+torch.cuda.manual_seed_all(manual_seed)
 
-# load the dataset
-dataloader = data.create_dataloader(opt)
+if __name__ == '__main__':
+    # ----------------------------
+    # get options [opt_name + '_options.py']
+    options = create_options(args.opt_name)
+    options.update_with_args(args)
+    expr_dir = options.print_options()
+    opt = options.parse()
 
-# create trainer for our model
-trainer = Pix2PixTrainer(opt)
+    #-----------------------------
+    # get dataloader [opt_dataset + '_dataset.py']
+    data_loader = create_dataloader(opt)
+    dataset_size = len(data_loader)
+    print("# training images length ", dataset_size)
+    opt['model'] = 'test'
+    test_data_loader = create_dataloader(opt)
+    test_dataset_size = len(test_data_loader)
+    print("# testing images length", test_dataset_size)
+    opt['model'] = 'train'
 
-# create tool for counting iterations
-iter_counter = IterationCounter(opt, len(dataloader))
+    #-----------------------------
+    # get model [opt_model_name + '_model.py']
+    model = create_model(opt)
+    info = model.setup(opt, expr_dir)
+    global_step = info.get('step', 0)
+    opt['start_epoch'] = info.get('epoch', 0)
 
-# create tool for visualization
-visualizer = Visualizer(opt)
+    # start training
+    with closing(
+            train_utils.MultiStepStatisticCollector(
+                log_dir=expr_dir, global_step=global_step)) as stat_log:
+        for epoch in range(opt['start_epoch'],
+                           opt['niter'] + opt['niter_decay'] + 1):
+            epoch_start_time = time.time()
 
-for epoch in iter_counter.training_epochs():
-    iter_counter.record_epoch_start(epoch)
-    for i, data_i in enumerate(dataloader, start=iter_counter.epoch_iter):
-        iter_counter.record_one_iteration()
+            # train one pass
+            with tqdm(total=len(data_loader)) as pbar:
+                pbar.set_description(desc=f'epoch-{epoch}')
+                for i, data in enumerate(data_loader):
+                    iter_start_time = time.time()
+                    model.set_input(data)
 
-        # Training
-        # train generator
-        if i % opt.D_steps_per_G == 0:
-            trainer.run_generator_one_step(data_i)
+                    model.optimize_parameters()
+                    if global_step % opt['print_freq'] == 0:
+                        losses_ret = model.get_current_losses()
+                        t_data = time.time() - iter_start_time
+                        post_fix = ''
+                        post_fix += f'time:{t_data:.3f}'
+                        for k, v in losses_ret.items():
+                            post_fix += f'{k} = {v:.3f} '
+                        pbar.set_postfix_str(s=post_fix[:80])
 
-        # train discriminator
-        trainer.run_discriminator_one_step(data_i)
+                    if global_step % opt['log_freq'] == 0:
+                        log_ret = model.get_current_log()
+                        for a, d in log_ret.items():
+                            for k, v in d.items():
+                                stat_log.__getattr__('add_' + a)(k, v)
 
-        # Visualizations
-        if iter_counter.needs_printing():
-            losses = trainer.get_latest_losses()
-            visualizer.print_current_errors(epoch, iter_counter.epoch_iter,
-                                            losses, iter_counter.time_per_iter)
-            visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
+                    stat_log.next_step()
+                    global_step = stat_log.count
+                    pbar.update(1)
 
-        if iter_counter.needs_displaying():
-            visuals = OrderedDict([('input_label', data_i['label']),
-                                   ('synthesized_image', trainer.get_latest_generated()),
-                                   ('real_image', data_i['image'])])
-            visualizer.display_current_results(visuals, epoch, iter_counter.total_steps_so_far)
+            checkpoint_path = os.path.join(expr_dir, "epoch" + str(epoch))
+            model.save_nets(model.model_dict, {
+                'epoch': epoch,
+                'step': stat_log.count
+            }, checkpoint_path)
+            print(
+                f'End of epoch {epoch} \t Time Taken: {time.time() - epoch_start_time} secs'
+            )
+            model.update_learning_rate()
 
-        if iter_counter.needs_saving():
-            print('saving the latest model (epoch %d, total_steps %d)' %
-                  (epoch, iter_counter.total_steps_so_far))
-            trainer.save('latest')
-            iter_counter.record_current_iter()
+            # validate one pass
+            meters = []
+            for i in range(len(model.loss_names)):
+                meters.append(train_utils.AverageMeter())
 
-    trainer.update_learning_rate(epoch)
-    iter_counter.record_epoch_end()
+            with tqdm(total=len(test_data_loader)) as pbar:
+                pbar.set_description(desc='Validate: ')
+                for i, data in enumerate(test_data_loader):
+                    model.set_input(data)
+                    model.test()
+                    losses = model.get_current_losses()
+                    for index, key in enumerate(losses):
+                        value = losses[key]
+                        meters[index].update(value)
 
-    if epoch % opt.save_epoch_freq == 0 or \
-       epoch == iter_counter.total_epochs:
-        print('saving the model at the end of epoch %d, iters %d' %
-              (epoch, iter_counter.total_steps_so_far))
-        trainer.save('latest')
-        trainer.save(epoch)
+                vis_ret = model.get_current_visuals()
+                hist_ret = model.get_current_hist()
+                for k, v in vis_ret.items():
+                    stat_log.add_images('test_' + k, v)
+                for k, v in hist_ret.items():
+                    stat_log.add_histogram('test_' + k, v)
 
-print('Training was successfully finished.')
+                post_fix = ''
+                for i in range(len(meters)):
+                    post_fix += f'{model.loss_names[i]}={meters[i].avg:.3f}'
+                    stat_log.add_scalar('test_' + model.loss_names[i],
+                                        meters[i].avg)
+                post_fix += '**'
+                pbar.set_postfix_str(s=post_fix)
+                pbar.update(1)
+
+    print('Training was successfully finished.')
