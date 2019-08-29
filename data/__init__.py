@@ -11,7 +11,7 @@ from data.base_dataset import BaseDataset
 def find_dataset_using_name(dataset_name):
     # Given the option --dataset [datasetname],
     # the file "datasets/datasetname_dataset.py"
-    # will be imported. 
+    # will be imported.
     dataset_filename = "data." + dataset_name + "_dataset"
     datasetlib = importlib.import_module(dataset_filename)
 
@@ -24,7 +24,7 @@ def find_dataset_using_name(dataset_name):
         if name.lower() == target_dataset_name.lower() \
            and issubclass(cls, BaseDataset):
             dataset = cls
-            
+
     if dataset is None:
         raise ValueError("In %s.py, there should be a subclass of BaseDataset "
                          "with class name that matches %s in lowercase." %
@@ -33,22 +33,19 @@ def find_dataset_using_name(dataset_name):
     return dataset
 
 
-def get_option_setter(dataset_name):    
+def get_option_setter(dataset_name):
     dataset_class = find_dataset_using_name(dataset_name)
     return dataset_class.modify_commandline_options
 
 
 def create_dataloader(opt):
-    dataset = find_dataset_using_name(opt.dataset_mode)
-    instance = dataset()
-    instance.initialize(opt)
+    dataset = find_dataset_using_name(opt['dataset_name'])
+    instance = dataset(opt)
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
-    dataloader = torch.utils.data.DataLoader(
-        instance,
-        batch_size=opt.batchSize,
-        shuffle=not opt.serial_batches,
-        num_workers=int(opt.nThreads),
-        drop_last=opt.isTrain
-    )
+    dataloader = torch.utils.data.DataLoader(instance,
+                                             batch_size=opt['batchSize'],
+                                             shuffle=not opt['serial_batches'],
+                                             num_workers=int(opt['nThreads']),
+                                             drop_last=opt['isTrain'])
     return dataloader

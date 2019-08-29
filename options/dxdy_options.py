@@ -13,7 +13,7 @@ class Xoptions(BaseOptions):
         self.opt['input_nc'] = 3
         self.opt['outpu_nc'] = 2
         self.opt['ndf'] = 64
-        self.opt['dataset_name'] = 'scut'
+        self.opt['dataset_name'] = 'dxdy'
         self.opt['im_size'] = 512
 
         # total epoch  = niter + niter_decay + 1
