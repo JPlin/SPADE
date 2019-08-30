@@ -35,7 +35,7 @@ def get_option_setter(model_name):
 
 
 def create_model(opt):
-    model = find_model_using_name(opt.model)
+    model = find_model_using_name(opt['model'])
     instance = model()
     instance.initialize(opt)
     print("model [%s] was created" % (instance.name()))

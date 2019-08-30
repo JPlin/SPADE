@@ -6,7 +6,7 @@ from contextlib import closing
 
 import torch
 from tqdm import tqdm
-from datasets import create_dataloader
+from data import create_dataloader
 from models import create_model
 from options import create_options
 from util import data_utils, train_utils
@@ -44,11 +44,11 @@ if __name__ == '__main__':
     data_loader = create_dataloader(opt)
     dataset_size = len(data_loader)
     print("# training images length ", dataset_size)
-    opt['model'] = 'test'
+    opt['mode'] = 'test'
     test_data_loader = create_dataloader(opt)
     test_dataset_size = len(test_data_loader)
     print("# testing images length", test_dataset_size)
-    opt['model'] = 'train'
+    opt['mode'] = 'train'
 
     #-----------------------------
     # get model [opt_model_name + '_model.py']
@@ -100,11 +100,11 @@ if __name__ == '__main__':
             print(
                 f'End of epoch {epoch} \t Time Taken: {time.time() - epoch_start_time} secs'
             )
-            model.update_learning_rate()
+            model.update_learning_rate(epoch)
 
             # validate one pass
             meters = []
-            for i in range(len(model.loss_names)):
+            for i in range(len(model.loss_dict.keys())):
                 meters.append(train_utils.AverageMeter())
 
             with tqdm(total=len(test_data_loader)) as pbar:
@@ -126,8 +126,8 @@ if __name__ == '__main__':
 
                 post_fix = ''
                 for i in range(len(meters)):
-                    post_fix += f'{model.loss_names[i]}={meters[i].avg:.3f}'
-                    stat_log.add_scalar('test_' + model.loss_names[i],
+                    post_fix += f'{list(model.loss_dict.keys())[i]}={meters[i].avg:.3f}'
+                    stat_log.add_scalar('test_' + list(model.loss_dict.keys())[i],
                                         meters[i].avg)
                 post_fix += '**'
                 pbar.set_postfix_str(s=post_fix)

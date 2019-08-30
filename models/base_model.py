@@ -78,11 +78,9 @@ class BaseModel():
 
     # make models eval mode during test time
     def eval(self):
-        for name in self.train_net_names:
-            if isinstance(name, str):
-                net = getattr(self, 'net' + name)
-                net.eval()
-
+        for net in self.train_nets:
+            net.eval()
+    
     # used in test time, warpping 'forward' in no_grad() so we don't save intermediate steps for backprop
     def test(self):
         with torch.no_grad():
@@ -211,7 +209,7 @@ class BaseModel():
             if verbose:
                 print(net)
             print('[Network %s] Total number of parameters : %.3f M' %
-                  ('net' + name, num_params / 1e6))
+                  ('net' + net.module.__class__.__name__ , num_params / 1e6))
         print('--------------------------------------')
 
     # set requires_grad = False to avoid computation

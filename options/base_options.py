@@ -23,7 +23,7 @@ class BaseOptions():
         # number of iter at starting learning rate
         self.opt['niter'] = 50
         # number of iter to linearly decay learning rate to zero
-        self.opt['niter_decay'] = 0
+        self.opt['niter_decay'] = 50
         # multiply by a gamma every lr_decay_iters iterations
         self.opt['lr_decay_iters'] = 50
         self.opt['optimizer'] = 'adam'
@@ -50,6 +50,7 @@ class BaseOptions():
         self.opt['std'] = [0.5, 0.5, 0.5]
         # scaling and cropping of images at load time
         self.opt['resize_or_crop'] = 'resize_and_crop'
+        self.opt['no_ganFeat_loss'] = True
 
     def print_options(self):
         message = ''

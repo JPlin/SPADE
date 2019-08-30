@@ -44,8 +44,8 @@ def create_dataloader(opt):
     print("dataset [%s] of size %d was created" %
           (type(instance).__name__, len(instance)))
     dataloader = torch.utils.data.DataLoader(instance,
-                                             batch_size=opt['batchSize'],
-                                             shuffle=not opt['serial_batches'],
+                                             batch_size=opt['batch_size'],
+                                             shuffle=True,
                                              num_workers=int(opt['nThreads']),
                                              drop_last=opt['isTrain'])
     return dataloader

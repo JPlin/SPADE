@@ -10,15 +10,17 @@ class Xoptions(BaseOptions):
             'norm_G'] = 'spectralinstance'  # [instance norm or batch norm]
         self.opt[
             'norm_D'] = 'spectralinstance'  # [instance norm or batch norm]
-        self.opt['input_nc'] = 3
-        self.opt['outpu_nc'] = 2
+        self.opt['input_nc'] = 4
+        self.opt['output_nc'] = 2
+        self.opt['netD'] = 'multiscale'
         self.opt['ndf'] = 64
-        self.opt['dataset_name'] = 'dxdy'
+        self.opt['netG'] = 'pix2pixhd'
+        self.opt['ngf'] = 64
+        self.opt['dataset_name'] = 'orient'
         self.opt['im_size'] = 512
 
         # total epoch  = niter + niter_decay + 1
         # n_layers | multiscale | image
-        self.opt['net_D'] = 'multiscale'
         self.opt['flip_label'] = False
         self.opt['soft_labels'] = False
         self.opt['expansion'] = 0.7

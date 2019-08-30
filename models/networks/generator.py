@@ -138,9 +138,8 @@ class Pix2PixHDGenerator(BaseNetwork):
     def __init__(self, opt):
         super().__init__()
         Pix2PixHDGenerator.modify_commandline_options(opt)
-        input_nc = opt['label_nc'] + (1 if opt['contain_dontcare_label'] else
-                                      0) + (0 if opt['no_instance'] else 1)
 
+        input_nc = opt['input_nc']
         norm_layer = get_nonspade_norm_layer(opt, opt['norm_G'])
         activation = nn.ReLU(False)
 

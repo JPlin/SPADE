@@ -52,7 +52,7 @@ class DxdyModel(BaseModel):
             self.netG = DataParallelWithCallback(self.netG,
                                                  device_ids=opt['gpu_ids'])
             self.netD = DataParallelWithCallback(self.netD,
-                                                 device_ids=opt['gpu_dis'])
+                                                 device_ids=opt['gpu_ids'])
         self.train_nets = [self.netG, self.netD]
 
     def initialize_optimizer(self, opt):
@@ -69,12 +69,12 @@ class DxdyModel(BaseModel):
         self.old_lr = opt['lr']
 
     def initialize_loss(self, opt):
-        self.criterionGAN = networks.GANLoss(opt.gan_mode,
+        self.criterionGAN = networks.GANLoss(opt['gan_mode'],
                                              tensor=self.FloatTensor,
                                              opt=opt)
-        if self.use_gpu:
-            self.criterionGAN = DataParallelWithCallback(
-                self.criterionGAN, device_ids=opt['gpu_ids'])
+        # if self.use_gpu:
+        #     self.criterionGAN = DataParallelWithCallback(
+        #         self.criterionGAN, device_ids=opt['gpu_ids'])
         self.criterionReg = torch.nn.L1Loss()
 
     def initialize_other(self, opt):
@@ -94,16 +94,16 @@ class DxdyModel(BaseModel):
         print(f'{len(sample_dataset)} is loaded')
 
     def set_input(self, data):
-        self.image = data['image']
-        self.mask = data['mask']
-        self.intensity = data['intensity']
-        self.gt_dxdy = data['dxdy']
+        self.image = data['image'].to(self.device)
+        self.mask = data['mask'].to(self.device)
+        self.intensity = data['intensity'].to(self.device)
+        self.gt_dxdy = data['dxdy'].to(self.device)
         try:
             sample_data = next(self.sample_iter)
         except StopIteration:
             self.sample_iter = iter(self.sample_loader)
             sample_data = next(self.sample_iter)
-        convdata = sample_data['convdata']
+        convdata = sample_data['convdata'].to(self.device)
         strands = convdata.permute(
             0, 2, 3, 4,
             1)[:, :3, :, :, :].contiguous()  # b x 3 x 32 x 32 x 300
@@ -135,7 +135,6 @@ class DxdyModel(BaseModel):
         self.pred_dxdy = self.netG(torch.cat([self.image, mask_], dim=1))
         fake_sample = self.pred_dxdy * mask_.type(self.pred_dxdy.dtype)
         self.g_fake_score = self.netD(fake_sample)
-
         # for D
         fake_sample = self.pred_dxdy.detach() * mask_
         fake_sample.requires_grad_()
@@ -143,19 +142,17 @@ class DxdyModel(BaseModel):
 
         self.d_real_score, self.d_fake_score = self.netD(
             real_sample), self.netD(fake_sample)
-
         # for vis
         masked_pred_dxdy = torch.where(mask_ > 0., self.pred_dxdy,
                                        -torch.ones_like(self.pred_dxdy))
         masked_gt_dxdy = torch.where(mask_ > 0., self.gt_dxdy,
                                      -torch.ones_like(self.gt_dxdy))
-
-        self.vis_dict['image'] = self.image
-        self.vis_dict['gt_dxdy'] = self.gt_dxdy
-        self.vis_dict['pred_dxdy'] = self.pred_dxdy
-        self.vis_dict['masked_pred_dxdy'] = masked_pred_dxdy
-        self.vis_dict['masked_gt_dxdy'] = masked_gt_dxdy
-        self.vis_dict['strand_dxdy'] = self.strand_dxdy
+        self.vis_dict['image'] = self.image[:4]
+        self.vis_dict['gt_dxdy'] = (self.gt_dxdy[:4, [0,1,1]] + 1)/2
+        self.vis_dict['pred_dxdy'] = (self.pred_dxdy[:4, [0,1,1]] + 1)/2
+        self.vis_dict['masked_pred_dxdy'] = (masked_pred_dxdy[:4, [0,1,1]] + 1)/2
+        self.vis_dict['masked_gt_dxdy'] = (masked_gt_dxdy[:4, [0,1,1]]+1)/2
+        self.vis_dict['strand_dxdy'] = (self.strand_dxdy[:4, [0,1,1]] + 1)/2
 
     def backward_G(self):
         reg_loss = self.dxdy_reg_loss(self.pred_dxdy,
@@ -179,8 +176,8 @@ class DxdyModel(BaseModel):
         self.loss_dict['loss_d_real'] = d_real.item()
 
     def optimize_parameters(self):
-        self.netG.train()
-        self.netD.train()
+        for net in self.train_nets:
+            net.train()
 
         self.forward()
 
