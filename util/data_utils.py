@@ -186,13 +186,13 @@ def vis_orient(dxdy):
         [B,2,H,W] or [B,H,W,2] or [2,H,W] range [-1, 1]
     Out:
     - RGB: 
-        np.array [B,H,W,3] 
+        np.array [B,3,H,W] 
         np.uint8
     '''
     assert len(dxdy.shape) == 3 or len(dxdy.shape) == 4
     # to numpy array
     if dxdy.__class__ == torch.Tensor:
-        dxdy = dxdy.cpu().numpy()
+        dxdy = dxdy.detach().cpu().numpy()
     # to batch
     if len(dxdy.shape) == 3:
         dxdy = dxdy[np.newaxis,:]
@@ -208,4 +208,5 @@ def vis_orient(dxdy):
     angle = (dx + 1)/2.
     hsv = np.stack([angle, np.ones_like(angle) , np.ones_like(angle)], -1)
     RGB = np.stack([color.hsv2rgb(x) for x in hsv], axis = 0) * 255
-    return RGB.astype(np.uint8)
+    RGB = np.transpose(RGB.astype(np.uint8), (0 , 3, 1,2 ))
+    return RGB
