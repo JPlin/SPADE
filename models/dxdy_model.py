@@ -125,7 +125,7 @@ class DxdyModel(BaseModel):
             self.opt['im_size'],
             self.opt['expansion'],
             align_face=self.opt['align_face'],
-            target_face_scale=0.5)
+            target_face_scale=self.opt['target_face_scale'])
 
     def forward(self):
         mask_ = self.mask.unsqueeze(1).type(self.image.dtype)
@@ -221,7 +221,7 @@ class DxdyModel(BaseModel):
         norm = torch.abs(
             torch.norm(y_hat, dim=1, keepdim=False) - torch.ones_like(cos))
         return 1 - cos + norm
-    
+
     def discriminate(self, fake_image, real_image):
         fake_concat = torch.cat([fake_image], dim=1)
         real_concat = torch.cat([real_image], dim=1)
