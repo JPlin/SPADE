@@ -107,6 +107,7 @@ if __name__ == '__main__':
             for i in range(len(model.loss_dict.keys())):
                 meters.append(train_utils.AverageMeter())
 
+            model.eval()
             with tqdm(total=len(test_data_loader)) as pbar:
                 pbar.set_description(desc='Validate: ')
                 for i, data in enumerate(test_data_loader):
@@ -116,6 +117,7 @@ if __name__ == '__main__':
                     for index, key in enumerate(losses):
                         value = losses[key]
                         meters[index].update(value)
+                    pbar.update(1)
 
                 vis_ret = model.get_current_visuals()
                 hist_ret = model.get_current_hist()
@@ -131,6 +133,6 @@ if __name__ == '__main__':
                                         meters[i].avg)
                 post_fix += '**'
                 pbar.set_postfix_str(s=post_fix)
-                pbar.update(1)
+                
 
     print('Training was successfully finished.')
