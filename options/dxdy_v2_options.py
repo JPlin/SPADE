@@ -7,9 +7,9 @@ class Xoptions(BaseOptions):
         # must needed
         self.opt['model'] = 'dxdy'
         self.opt[
-            'norm_G'] = 'spectralinstance'  # [instance norm or batch norm]
+            'norm_G'] = 'spectralsync_batch'  # [instance norm or batch norm]
         self.opt[
-            'norm_D'] = 'spectralinstance'  # [instance norm or batch norm]
+            'norm_D'] = 'spectralsync_batch'  # [instance norm or batch norm]
         self.opt['input_nc'] = 4
         self.opt['output_nc'] = 2
         self.opt['netD'] = 'multiscale'

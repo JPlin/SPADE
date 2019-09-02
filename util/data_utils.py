@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 
+from skimage import color
 import numpy as np
 import torch
 
@@ -175,3 +176,37 @@ def _mkdir(path):
         if check.lower() == 'y':
             shutil.rmtree(path)
             os.makedirs(path)
+
+def vis_orient(dxdy):
+    '''
+    visualize dxdy in HSV space and translate to RGB space
+    In:
+    - dxdy: 
+        np.array or torch.tensor
+        [B,2,H,W] or [B,H,W,2] or [2,H,W] range [-1, 1]
+    Out:
+    - RGB: 
+        np.array [B,3,H,W] 
+        np.uint8
+    '''
+    assert len(dxdy.shape) == 3 or len(dxdy.shape) == 4
+    # to numpy array
+    if dxdy.__class__ == torch.Tensor:
+        dxdy = dxdy.detach().cpu().numpy()
+    # to batch
+    if len(dxdy.shape) == 3:
+        dxdy = dxdy[np.newaxis,:]
+    if dxdy.shape[-1] == 2:
+        dxdy = np.transpose(dxdy, (0,3,1,2))
+    dx = dxdy[:,0]
+    dy = dxdy[:,1]
+    norm = np.sqrt(dx**2+dy**2) + 1e-8
+    dx = dx / norm
+    dy = dy / norm
+    dy = np.where(dy < 0, -dy , dy)
+    dx = np.where(dy < 0, - dx, dx)
+    angle = (dx + 1)/2.
+    hsv = np.stack([angle, np.ones_like(angle) , np.ones_like(angle)], -1)
+    RGB = np.stack([color.hsv2rgb(x) for x in hsv], axis = 0) * 255
+    RGB = np.transpose(RGB.astype(np.uint8), (0 , 3, 1,2 ))
+    return RGB

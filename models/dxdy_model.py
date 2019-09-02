@@ -3,6 +3,7 @@ from collections import OrderedDict
 import models.networks as networks
 from models.networks.sync_batchnorm import DataParallelWithCallback
 from models.base_model import BaseModel
+from util import data_utils
 import tools
 import haya_data
 
@@ -124,7 +125,7 @@ class DxdyModel(BaseModel):
             self.opt['im_size'],
             self.opt['expansion'],
             align_face=self.opt['align_face'],
-            target_face_scale=0.5)
+            target_face_scale=self.opt['target_face_scale'])
 
     def forward(self):
         mask_ = self.mask.unsqueeze(1).type(self.image.dtype)
@@ -148,11 +149,11 @@ class DxdyModel(BaseModel):
         masked_gt_dxdy = torch.where(mask_ > 0., self.gt_dxdy,
                                      -torch.ones_like(self.gt_dxdy))
         self.vis_dict['image'] = self.image[:4]
-        self.vis_dict['gt_dxdy'] = (self.gt_dxdy[:4, [0,1,1]] + 1)/2
-        self.vis_dict['pred_dxdy'] = (self.pred_dxdy[:4, [0,1,1]] + 1)/2
-        self.vis_dict['masked_pred_dxdy'] = (masked_pred_dxdy[:4, [0,1,1]] + 1)/2
-        self.vis_dict['masked_gt_dxdy'] = (masked_gt_dxdy[:4, [0,1,1]]+1)/2
-        self.vis_dict['strand_dxdy'] = (self.strand_dxdy[:4, [0,1,1]] + 1)/2
+        self.vis_dict['gt_dxdy'] = data_utils.vis_orient(self.gt_dxdy[:4])
+        self.vis_dict['pred_dxdy'] = data_utils.vis_orient(self.pred_dxdy[:4])
+        self.vis_dict['masked_pred_dxdy'] = data_utils.vis_orient(masked_pred_dxdy[:4])
+        self.vis_dict['masked_gt_dxdy'] = data_utils.vis_orient(masked_gt_dxdy[:4])
+        self.vis_dict['strand_dxdy'] = data_utils.vis_orient(self.strand_dxdy[:4])
 
     def backward_G(self):
         reg_loss = self.dxdy_reg_loss(self.pred_dxdy,
@@ -220,7 +221,7 @@ class DxdyModel(BaseModel):
         norm = torch.abs(
             torch.norm(y_hat, dim=1, keepdim=False) - torch.ones_like(cos))
         return 1 - cos + norm
-    
+
     def discriminate(self, fake_image, real_image):
         fake_concat = torch.cat([fake_image], dim=1)
         real_concat = torch.cat([real_image], dim=1)
