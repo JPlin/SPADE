@@ -122,7 +122,7 @@ if __name__ == '__main__':
                 vis_ret = model.get_current_visuals()
                 hist_ret = model.get_current_hist()
                 for k, v in vis_ret.items():
-                    stat_log.add_images('test_' + k, v)
+                    stat_log.add_image('test_' + k, v)
                 for k, v in hist_ret.items():
                     stat_log.add_histogram('test_' + k, v)
 

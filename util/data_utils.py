@@ -86,22 +86,6 @@ def naive_save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
         shutil.copyfile(filename, filename.replace('checkpoint', 'model_best'))
 
 
-def make_grid_3(img_s, img_a, img_g, style='imagenet'):
-    if style == 'imagenet':
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
-    else:
-        mean = [0.5, 0.5, 0.5]
-        std = [0.5, 0.5, 0.5]
-    imgs = torch.stack([img_s, img_a, img_g])
-    imgs = torch.transpose(imgs, 0, 1)
-    imgs = torch.reshape(imgs, (-1, *imgs.size()[2:]))
-    imgs = make_grid(imgs, 9)
-    for t, m, s in zip(imgs, mean, std):
-        t.mul_(s).add_(m)
-    return imgs
-
-
 def make_grid_n(img_list, style='imagenet'):
     if style == 'imagenet':
         mean = [0.485, 0.456, 0.406]
@@ -109,14 +93,19 @@ def make_grid_n(img_list, style='imagenet'):
     else:
         mean = [0.5, 0.5, 0.5]
         std = [0.5, 0.5, 0.5]
-    imgs = torch.stack(img_list)
-    imgs = torch.transpose(imgs, 0, 1)
-    imgs = torch.reshape(imgs, (-1, *imgs.size()[2:]))
-    imgs = make_grid(imgs, 9, padding=8)
-    for t, m, s in zip(imgs, mean, std):
-        t.mul_(s).add_(m)
+    if isinstance(img_list, list):
+        imgs = torch.stack(img_list)
+        imgs = torch.transpose(imgs, 0, 1)
+        imgs = torch.reshape(imgs, (-1, *imgs.size()[2:]))
+        imgs = make_grid(imgs, 9, padding=8)
+        for t, m, s in zip(imgs, mean, std):
+            t.mul_(s).add_(m)
+    elif img_list.__class__ == torch.Tensor:
+        tensor = img_list.detach().cpu()
+        if tensor.ndimension() == 3:
+            tensor = tensor.unsqueeze(0)
+        imgs = make_grid(tensor, normalize = True)
     return imgs
-
 
 def unmold_input(tensor,
                  keep_dims=False,
@@ -177,7 +166,7 @@ def _mkdir(path):
             shutil.rmtree(path)
             os.makedirs(path)
 
-def vis_orient(dxdy):
+def vis_orient(dxdy , ret_type = 'tensor'):
     '''
     visualize dxdy in HSV space and translate to RGB space
     In:
@@ -203,10 +192,12 @@ def vis_orient(dxdy):
     norm = np.sqrt(dx**2+dy**2) + 1e-8
     dx = dx / norm
     dy = dy / norm
-    dy = np.where(dy < 0, -dy , dy)
-    dx = np.where(dy < 0, - dx, dx)
+    dx = np.where(dy < 0, -dx, dx)
+    dy = np.where(dy < 0, -dy, dy)
     angle = (dx + 1)/2.
     hsv = np.stack([angle, np.ones_like(angle) , np.ones_like(angle)], -1)
     RGB = np.stack([color.hsv2rgb(x) for x in hsv], axis = 0) * 255
     RGB = np.transpose(RGB.astype(np.uint8), (0 , 3, 1,2 ))
+    if ret_type == 'tensor':
+        RGB = make_grid(torch.tensor(RGB))
     return RGB
