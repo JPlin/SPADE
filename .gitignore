@@ -2,6 +2,7 @@ checkpoints/
 results/
 .idea/
 .vscode/
+.ipynb_checkpoints/
 *.tar.gz
 *.zip
 *.pkl
