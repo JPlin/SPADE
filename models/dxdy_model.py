@@ -151,9 +151,12 @@ class DxdyModel(BaseModel):
         self.vis_dict['image'] = data_utils.make_grid_n(self.image[:6])
         self.vis_dict['gt_dxdy'] = data_utils.vis_orient(self.gt_dxdy[:6])
         self.vis_dict['pred_dxdy'] = data_utils.vis_orient(self.pred_dxdy[:6])
-        self.vis_dict['masked_pred_dxdy'] = data_utils.vis_orient(masked_pred_dxdy[:6])
-        self.vis_dict['masked_gt_dxdy'] = data_utils.vis_orient(masked_gt_dxdy[:6])
-        self.vis_dict['strand_dxdy'] = data_utils.vis_orient(self.strand_dxdy[:6])
+        self.vis_dict['masked_pred_dxdy'] = data_utils.vis_orient(
+            masked_pred_dxdy[:6])
+        self.vis_dict['masked_gt_dxdy'] = data_utils.vis_orient(
+            masked_gt_dxdy[:6])
+        self.vis_dict['strand_dxdy'] = data_utils.vis_orient(
+            self.strand_dxdy[:6])
 
     def backward_G(self):
         reg_loss = self.dxdy_reg_loss(self.pred_dxdy,

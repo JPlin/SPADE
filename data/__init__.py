@@ -46,6 +46,6 @@ def create_dataloader(opt):
     dataloader = torch.utils.data.DataLoader(instance,
                                              batch_size=opt['batch_size'],
                                              shuffle=True,
-                                             num_workers=int(opt['nThreads']),
+                                             num_workers=int(opt['workers']),
                                              drop_last=opt['isTrain'])
     return dataloader
