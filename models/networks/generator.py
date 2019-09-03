@@ -159,12 +159,13 @@ class Pix2PixHDGenerator(BaseNetwork):
         mult = 1
         for i in range(opt['resnet_n_downsample']):
             model += [
+                nn.ReflectionPad2d(1),
                 norm_layer(
                     nn.Conv2d(opt['ngf'] * mult,
                               opt['ngf'] * mult * 2,
-                              kernel_size=3,
+                              kernel_size=4,
                               stride=2,
-                              padding=1)), activation
+                              padding=0)), activation
             ]
             mult *= 2
 
@@ -181,14 +182,25 @@ class Pix2PixHDGenerator(BaseNetwork):
         for i in range(opt['resnet_n_downsample']):
             nc_in = int(opt['ngf'] * mult)
             nc_out = int((opt['ngf'] * mult) / 2)
+            # model += [
+            #     norm_layer(
+            #         nn.ConvTranspose2d(nc_in,
+            #                            nc_out,
+            #                            kernel_size=4,
+            #                            stride=2,
+            #                            padding=0,
+            #                            output_padding=1)), activation
+            # ]
             model += [
+                nn.Upsample(scale_factor=2, mode = 'bilinear'),
+                nn.ReflectionPad2d(1),
                 norm_layer(
-                    nn.ConvTranspose2d(nc_in,
-                                       nc_out,
-                                       kernel_size=3,
-                                       stride=2,
-                                       padding=1,
-                                       output_padding=1)), activation
+                    nn.Conv2d(nc_in, 
+                        nc_out, 
+                        kernel_size = 3, 
+                        stride = 1, 
+                        padding = 0)
+                )
             ]
             mult = mult // 2
 
