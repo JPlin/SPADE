@@ -148,7 +148,7 @@ class DxdyModel(BaseModel):
                                        -torch.ones_like(self.pred_dxdy))
         masked_gt_dxdy = torch.where(mask_ > 0., self.gt_dxdy,
                                      -torch.ones_like(self.gt_dxdy))
-        self.vis_dict['image'] = self.image[:4]
+        self.vis_dict['image'] = self.image[:4].cpu().numpy()
         self.vis_dict['gt_dxdy'] = data_utils.vis_orient(self.gt_dxdy[:4])
         self.vis_dict['pred_dxdy'] = data_utils.vis_orient(self.pred_dxdy[:4])
         self.vis_dict['masked_pred_dxdy'] = data_utils.vis_orient(masked_pred_dxdy[:4])

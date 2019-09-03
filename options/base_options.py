@@ -9,8 +9,8 @@ class BaseOptions():
         self.opt = {}
         # training related
         self.opt['mode'] = 'train'
-        self.opt['workers'] = 0
-        self.opt['nThreads'] = 0
+        self.opt['workers'] = 8
+        self.opt['nThreads'] = 8
         self.opt['start_epoch'] = 0
         self.opt['im_size'] = 256
         # normal|xavier|kaiming|orthogonal

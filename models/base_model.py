@@ -158,7 +158,7 @@ class BaseModel():
                 torch.save(
                     {
                         'state_dict': model.state_dict(),
-                        'optimizer': optimizer.state_dict()
+                        # 'optimizer': optimizer.state_dict()
                     }, path)
         torch.save(info, os.path.join(folder, "info"))
         print("saved checkpoint to directory {}".format(
@@ -184,7 +184,7 @@ class BaseModel():
                 path = os.path.join(folder, net_name)
                 checkpoint = torch.load(path)
                 model.load_state_dict(checkpoint['state_dict'])
-                v['optimizer'].load_state_dict(checkpoint['optimizer'])
+                # v['optimizer'].load_state_dict(checkpoint['optimizer'])
         return torch.load(os.path.join(folder, "info"))
 
     @staticmethod
