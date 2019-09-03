@@ -35,7 +35,7 @@ class BaseOptions():
         # log frequency (default: 100)
         self.opt['print_freq'] = 100
         # display frequenry
-        self.opt['log_freq'] = 200
+        self.opt['log_freq'] = 100
         # frequency of saving checkpoints at the end of epochs
         self.opt['save_epoch_freq'] = 5
         # models are saved here

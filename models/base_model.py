@@ -134,7 +134,7 @@ class BaseModel():
         log_rect = OrderedDict()
         log_rect['scalar'] = self.get_current_losses()
         self.update_visuals()
-        log_rect['images'] = self.get_current_visuals()
+        log_rect['image'] = self.get_current_visuals()
         log_rect['histogram'] = self.get_current_hist()
         self.update_figs()
         log_rect['figure'] = self.get_current_fig()
