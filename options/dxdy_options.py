@@ -26,3 +26,4 @@ class Xoptions(BaseOptions):
         self.opt['expansion'] = 0.5
         self.opt['target_face_scale'] = 0.7
         self.opt['align_face'] = True
+        self.opt['lambda_reg'] = 10.

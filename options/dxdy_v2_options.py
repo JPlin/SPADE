@@ -25,4 +25,4 @@ class Xoptions(BaseOptions):
         self.opt['soft_labels'] = False
         self.opt['expansion'] = 0.5
         self.opt['target_face_scale'] = 0.7
-        self.opt['align_face'] = False
+        self.opt['align_face'] = True
