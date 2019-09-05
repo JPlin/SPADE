@@ -80,11 +80,16 @@ class BaseModel():
     def eval(self):
         for net in self.train_nets:
             net.eval()
-    
+
     # used in test time, warpping 'forward' in no_grad() so we don't save intermediate steps for backprop
     def test(self):
         with torch.no_grad():
             self.forward()
+
+    # inference images
+    def inference(self):
+        with torch.no_grad():
+            pass
 
     # get image paths
     def get_image_paths(self):
@@ -159,7 +164,8 @@ class BaseModel():
                     {
                         'state_dict': model.state_dict(),
                         # 'optimizer': optimizer.state_dict()
-                    }, path)
+                    },
+                    path)
         torch.save(info, os.path.join(folder, "info"))
         print("saved checkpoint to directory {}".format(
             os.path.abspath(folder)))
@@ -209,7 +215,7 @@ class BaseModel():
             if verbose:
                 print(net)
             print('[Network %s] Total number of parameters : %.3f M' %
-                  ('net' + net.module.__class__.__name__ , num_params / 1e6))
+                  ('net' + net.module.__class__.__name__, num_params / 1e6))
         print('--------------------------------------')
 
     # set requires_grad = False to avoid computation

@@ -47,5 +47,6 @@ def create_dataloader(opt):
                                              batch_size=opt['batch_size'],
                                              shuffle=True,
                                              num_workers=int(opt['workers']),
-                                             drop_last=opt['isTrain'])
+                                             drop_last=opt['isTrain'],
+                                             pin_memory=True)
     return dataloader

@@ -256,3 +256,13 @@ class DxdyModel(BaseModel):
             real = pred[pred.size(0) // 2:]
 
         return fake, real
+
+    def inference(self, data):
+        with torch.no_grad():
+            image = data['image'].to(self.device)
+            mask = data['mask'].to(self.device)
+            mask_ = mask.unsqueeze(1).type(image.dtype)
+            pred_dxdy = self.netG(torch.cat([image, mask_], dim=1))
+            masked_pred_dxdy = torch.where(mask_ > 0., pred_dxdy,
+                                           -torch.ones_like(pred_dxdy))
+            return {'image': image, 'mask': mask, 'pred_dxdy': pred_dxdy}
