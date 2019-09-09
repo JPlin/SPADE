@@ -96,12 +96,12 @@ class DxdyPairModel(BaseModel):
         pass
 
     def set_input(self, data):
-        self.image = data['image'].to(self.device)
-        self.mask = data['mask'].float().to(self.device)
-        self.intensity = data['intensity'].float().to(self.device)
-        self.gt_dxdy = data['dxdy'].float().to(self.device)
-        self.render_dxdy = data['render_dxdy'].float().to(self.device)    
-        self.synthetic_label = data['synthetic_label'].float().to(self.device)
+        self.image = data['image'].cuda(non_blocking=True)
+        self.mask = data['mask'].float().cuda()
+        self.intensity = data['intensity'].float().cuda(non_blocking=True)
+        self.gt_dxdy = data['dxdy'].float().cuda()
+        self.render_dxdy = data['render_dxdy'].float().cuda(non_blocking=True)
+        self.synthetic_label = data['synthetic_label'].float().cuda(non_blocking=True)
 
     def forward(self):
         mask_ = self.mask.unsqueeze(1).type(self.gt_dxdy.dtype)

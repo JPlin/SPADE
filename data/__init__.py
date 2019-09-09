@@ -50,3 +50,20 @@ def create_dataloader(opt):
                                              drop_last=opt['isTrain'],
                                              pin_memory=True)
     return dataloader
+
+# used for distributed data parallel
+def create_dataloader2(opt):
+    dataset = find_dataset_using_name(opt['dataset_name'])
+    instance = dataset(opt)
+    print("dataset [%s] of size %d was created" %
+          (type(instance).__name__, len(instance)))
+    
+    sampler = torch.utils.data.distributed.DistributedSampler(instance,num_replicas=len(opt['gpu_ids']),rank=opt['local_rank'])
+    dataloader = torch.utils.data.DataLoader(instance,
+                                             batch_size=opt['batch_size'],
+                                             shuffle=True,
+                                             num_workers=int(opt['workers']),
+                                             drop_last=opt['isTrain'],
+                                             pin_memory=True,
+                                             sampler=sampler)
+    return dataloader

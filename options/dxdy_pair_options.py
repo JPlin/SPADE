@@ -19,6 +19,12 @@ class Xoptions(BaseOptions):
         self.opt['dataset_name'] = 'hairmix'
         self.opt['im_size'] = 512
 
+        # number of iter at starting learning rate
+        self.opt['niter'] = 20
+        # number of iter to linearly decay learning rate to zero
+        self.opt['niter_decay'] = 20
+        self.opt['lr_decay_iters'] = 20
+
         # total epoch  = niter + niter_decay + 1
         # n_layers | multiscale | image
         self.opt['flip_label'] = False
@@ -26,3 +32,4 @@ class Xoptions(BaseOptions):
         self.opt['expansion'] = 0.5
         self.opt['target_face_scale'] = 0.7
         self.opt['align_face'] = True
+
