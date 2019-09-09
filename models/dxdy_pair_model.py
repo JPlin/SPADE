@@ -8,9 +8,9 @@ import tools
 import haya_data
 
 
-class DxdyModel(BaseModel):
+class DxdyPairModel(BaseModel):
     def name(self):
-        return 'DxdyModel'
+        return 'DxdyPairModel'
 
     @staticmethod
     def modify_commandline_options(parser, is_train=True):
@@ -79,67 +79,41 @@ class DxdyModel(BaseModel):
         self.criterionReg = torch.nn.L1Loss()
 
     def initialize_other(self, opt):
-        full_body_mesh_vert_pos, full_body_mesh_face_inds = tools.load_body_mesh(
-        )
-        self.full_body_mesh_vert_pos = full_body_mesh_vert_pos.unsqueeze(0)
-        self.full_body_mesh_face_inds = full_body_mesh_face_inds.unsqueeze(0)
-        sample_dataset = haya_data.Hair3D10KConvDataOnly()
-        self.sample_loader = torch.utils.data.DataLoader(
-            sample_dataset,
-            batch_size=opt['batch_size'],
-            shuffle=False,
-            num_workers=opt['workers'],
-            drop_last=True)
-        self.sample_iter = iter(self.sample_loader)
-        assert len(sample_dataset) > 0
-        print(f'{len(sample_dataset)} is loaded')
+        # full_body_mesh_vert_pos, full_body_mesh_face_inds = tools.load_body_mesh(
+        # )
+        # self.full_body_mesh_vert_pos = full_body_mesh_vert_pos.unsqueeze(0)
+        # self.full_body_mesh_face_inds = full_body_mesh_face_inds.unsqueeze(0)
+        # sample_dataset = haya_data.Hair3D10KConvDataOnly()
+        # self.sample_loader = torch.utils.data.DataLoader(
+        #     sample_dataset,
+        #     batch_size=opt['batch_size'],
+        #     shuffle=False,
+        #     num_workers=opt['workers'],
+        #     drop_last=True)
+        # self.sample_iter = iter(self.sample_loader)
+        # assert len(sample_dataset) > 0
+        # print(f'{len(sample_dataset)} is loaded')
+        pass
 
     def set_input(self, data):
         self.image = data['image'].to(self.device)
-        self.mask = data['mask'].to(self.device)
-        self.intensity = data['intensity'].to(self.device)
-        self.gt_dxdy = data['dxdy'].to(torch.float).to(self.device)
-        try:
-            sample_data = next(self.sample_iter)
-        except StopIteration:
-            self.sample_iter = iter(self.sample_loader)
-            sample_data = next(self.sample_iter)
-        convdata = sample_data['convdata'].to(self.device)
-        strands = convdata.permute(
-            0, 2, 3, 4,
-            1)[:, :3, :, :, :].contiguous()  # b x 3 x 32 x 32 x 300
-        body_mesh_vert_pos = self.full_body_mesh_vert_pos.expand(
-            strands.size(0), -1, -1).to(strands.device)
-        body_mesh_face_inds = self.full_body_mesh_face_inds.expand(
-            strands.size(0), -1, -1).to(strands.device)
-        # generate random mvps
-        mvps, _, _ = tools.generate_random_mvps(strands.size(0),
-                                                strands.device)
-
-        # render the 2D information
-        self.strand_dxdy, self.strand_mask, body_mask, _, strand_vis, mvps, _ = tools.render(
-            mvps,
-            strands,
-            body_mesh_vert_pos,
-            body_mesh_face_inds,
-            self.opt['im_size'],
-            self.opt['expansion'],
-            align_face=self.opt['align_face'],
-            target_face_scale=self.opt['target_face_scale'])
+        self.mask = data['mask'].float().to(self.device)
+        self.intensity = data['intensity'].float().to(self.device)
+        self.gt_dxdy = data['dxdy'].float().to(self.device)
+        self.render_dxdy = data['render_dxdy'].float().to(self.device)    
+        self.synthetic_label = data['synthetic_label'].float().to(self.device)
 
     def forward(self):
-        mask_ = self.mask.unsqueeze(1).type(self.image.dtype)
-        strand_mask_ = self.strand_mask.unsqueeze(1).type(
-            self.strand_dxdy.dtype)
+        mask_ = self.mask.unsqueeze(1).type(self.gt_dxdy.dtype)
 
         # for G
-        self.pred_dxdy = self.netG(torch.cat([self.image, mask_], dim=1))
+        self.pred_dxdy = self.netG(torch.cat([self.gt_dxdy, mask_], dim=1))
         fake_sample = self.pred_dxdy * mask_.type(self.pred_dxdy.dtype)
         self.g_fake_score = self.netD(fake_sample)
         # for D
         fake_sample = self.pred_dxdy.detach() * mask_
         fake_sample.requires_grad_()
-        real_sample = self.strand_dxdy * strand_mask_
+        real_sample = self.render_dxdy * mask_
 
         self.d_real_score, self.d_fake_score = self.netD(
             real_sample), self.netD(fake_sample)
@@ -155,20 +129,29 @@ class DxdyModel(BaseModel):
             masked_pred_dxdy[:6])
         self.vis_dict['masked_gt_dxdy'] = data_utils.vis_orient(
             masked_gt_dxdy[:6])
-        self.vis_dict['strand_dxdy'] = data_utils.vis_orient(
-            self.strand_dxdy[:6])
+        self.vis_dict['render_dxdy'] = data_utils.vis_orient(
+            self.render_dxdy[:6])
 
     def backward_G(self):
-        reg_loss = self.dxdy_reg_loss(self.pred_dxdy,
+        # unpair data asparse loss
+        reg_sparse_loss = self.dxdy_reg_loss(self.pred_dxdy,
                                       self.gt_dxdy) * self.intensity
-        reg_loss = (self.mask.expand_as(reg_loss).float() *
-                    reg_loss).mean() * self.opt.get('lambda_reg', 1.)
+        reg_sparse_loss = (self.mask.expand_as(reg_sparse_loss).float() *
+                    reg_sparse_loss).view(reg_sparse_loss.size(0), -1).mean(dim = 1)
+        reg_sparse_loss = (reg_sparse_loss * (1. - self.synthetic_label)).mean()
+        # pair data dense loss
+        reg_dense_loss = self.dxdy_reg_loss(self.pred_dxdy, self.render_dxdy)
+        reg_dense_loss = (self.mask.expand_as(reg_dense_loss).float() *
+                    reg_dense_loss).view(reg_dense_loss.size(0), -1).mean(dim = 1)
+        reg_dense_loss = (reg_dense_loss * self.synthetic_label).mean()
+        # gan loss
         g_loss = self.criterionGAN(self.g_fake_score,
                                    True,
                                    for_discriminator=False)
 
-        sum([g_loss, reg_loss]).mean().backward()
-        self.loss_dict['loss_reg'] = reg_loss.item()
+        sum([g_loss, reg_sparse_loss, reg_dense_loss]).mean().backward()
+        self.loss_dict['loss_reg_sparse'] = reg_sparse_loss.item()
+        self.loss_dict['loss_reg_dense'] = reg_dense_loss.item()
         self.loss_dict['loss_g'] = g_loss.item()
 
     def backward_D(self):

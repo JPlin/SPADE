@@ -26,10 +26,10 @@ args = parser.parse_args()
 
 # set global variable
 manual_seed = 99
-print("Random Seed:", manual_seed)
 random.seed(manual_seed)
 torch.manual_seed(manual_seed)
 torch.cuda.manual_seed_all(manual_seed)
+torch.backends.cudnn.benchmark = True
 
 if __name__ == '__main__':
     # ----------------------------
@@ -103,11 +103,11 @@ if __name__ == '__main__':
             model.update_learning_rate(epoch)
 
             # validate one pass
+            model.eval()
             meters = []
             for i in range(len(model.loss_dict.keys())):
                 meters.append(train_utils.AverageMeter())
 
-            model.eval()
             with tqdm(total=len(test_data_loader)) as pbar:
                 pbar.set_description(desc='Validate: ')
                 for i, data in enumerate(test_data_loader):
@@ -129,10 +129,10 @@ if __name__ == '__main__':
                 post_fix = ''
                 for i in range(len(meters)):
                     post_fix += f'{list(model.loss_dict.keys())[i]}={meters[i].avg:.3f}'
-                    stat_log.add_scalar('test_' + list(model.loss_dict.keys())[i],
-                                        meters[i].avg)
+                    stat_log.add_scalar(
+                        'test_' + list(model.loss_dict.keys())[i],
+                        meters[i].avg)
                 post_fix += '**'
                 pbar.set_postfix_str(s=post_fix)
-                
 
     print('Training was successfully finished.')

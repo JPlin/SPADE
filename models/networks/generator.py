@@ -123,21 +123,21 @@ class SPADEGenerator(BaseNetwork):
         return x
 
 
-class Pix2PixHDGenerator(BaseNetwork):
+class Pix2PixHDGenerator2(BaseNetwork):
     @staticmethod
     def default_opt():
         return {'resnet_n_downsample': 4 , 'resnet_n_blocks': 9, 'resnet_kernel_size': 3, 'resnet_initial_kernel_size': 7 , 'norm_G': 'instance'}
 
     @staticmethod
     def modify_commandline_options(opt):
-        default_o = Pix2PixHDGenerator.default_opt()
+        default_o = Pix2PixHDGenerator2.default_opt()
         for k, v in default_o.items():
             if k not in opt.keys():
                 opt[k] = v
 
     def __init__(self, opt):
         super().__init__()
-        Pix2PixHDGenerator.modify_commandline_options(opt)
+        Pix2PixHDGenerator2.modify_commandline_options(opt)
 
         input_nc = opt['input_nc']
         norm_layer = get_nonspade_norm_layer(opt, opt['norm_G'])
@@ -210,6 +210,70 @@ class Pix2PixHDGenerator(BaseNetwork):
             nn.Conv2d(nc_out, opt['output_nc'], kernel_size=7, padding=0),
             nn.Tanh()
         ]
+
+        self.model = nn.Sequential(*model)
+
+    def forward(self, input, z=None):
+        return self.model(input)
+
+class Pix2PixHDGenerator(BaseNetwork):
+    @staticmethod
+    def default_opt():
+        return {'resnet_n_downsample': 4 , 'resnet_n_blocks': 9, 'resnet_kernel_size': 3, 'resnet_initial_kernel_size': 7 , 'norm_G': 'instance'}
+
+    @staticmethod
+    def modify_commandline_options(opt):
+        default_o = Pix2PixHDGenerator.default_opt()
+        for k, v in default_o.items():
+            if k not in opt.keys():
+                opt[k] = v
+
+    def __init__(self, opt):
+        super().__init__()
+        Pix2PixHDGenerator.modify_commandline_options(opt)
+
+        input_nc = opt['input_nc']
+        norm_layer = get_nonspade_norm_layer(opt, opt['norm_G'])
+        activation = nn.ReLU(False)
+
+        model = []
+
+        # initial conv
+        model += [nn.ReflectionPad2d(opt['resnet_initial_kernel_size'] // 2),
+                  norm_layer(nn.Conv2d(input_nc, opt['ngf'],
+                                       kernel_size=opt['resnet_initial_kernel_size'],
+                                       padding=0)),
+                  activation]
+
+        # downsample
+        mult = 1
+        for i in range(opt['resnet_n_downsample']):
+            model += [norm_layer(nn.Conv2d(opt['ngf'] * mult, opt['ngf'] * mult * 2,
+                                           kernel_size=3, stride=2, padding=1)),
+                      activation]
+            mult *= 2
+
+        # resnet blocks
+        for i in range(opt['resnet_n_blocks']):
+            model += [ResnetBlock(opt['ngf'] * mult,
+                                  norm_layer=norm_layer,
+                                  activation=activation,
+                                  kernel_size=opt['resnet_kernel_size'])]
+
+        # upsample
+        for i in range(opt['resnet_n_downsample']):
+            nc_in = int(opt['ngf'] * mult)
+            nc_out = int((opt['ngf'] * mult) / 2)
+            model += [norm_layer(nn.ConvTranspose2d(nc_in, nc_out,
+                                                    kernel_size=3, stride=2,
+                                                    padding=1, output_padding=1)),
+                      activation]
+            mult = mult // 2
+
+        # final output conv
+        model += [nn.ReflectionPad2d(3),
+                  nn.Conv2d(nc_out, opt['output_nc'], kernel_size=7, padding=0),
+                  nn.Tanh()]
 
         self.model = nn.Sequential(*model)
 
