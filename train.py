@@ -26,7 +26,6 @@ args = parser.parse_args()
 
 # set global variable
 manual_seed = 99
-print("Random Seed:", manual_seed)
 random.seed(manual_seed)
 torch.manual_seed(manual_seed)
 torch.cuda.manual_seed_all(manual_seed)
