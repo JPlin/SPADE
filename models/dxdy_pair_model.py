@@ -117,11 +117,14 @@ class DxdyPairModel(BaseModel):
 
         self.d_real_score, self.d_fake_score = self.netD(
             real_sample), self.netD(fake_sample)
-        # for vis
-        masked_pred_dxdy = torch.where(mask_ > 0., self.pred_dxdy,
+        self.mask_ = mask_
+        
+    def update_visuals(self):
+        masked_pred_dxdy = torch.where(self.mask_ > 0., self.pred_dxdy,
                                        -torch.ones_like(self.pred_dxdy))
-        masked_gt_dxdy = torch.where(mask_ > 0., self.gt_dxdy,
+        masked_gt_dxdy = torch.where(self.mask_ > 0., self.gt_dxdy,
                                      -torch.ones_like(self.gt_dxdy))
+
         self.vis_dict['image'] = data_utils.make_grid_n(self.image[:6])
         self.vis_dict['gt_dxdy'] = data_utils.vis_orient(self.gt_dxdy[:6])
         self.vis_dict['pred_dxdy'] = data_utils.vis_orient(self.pred_dxdy[:6])
