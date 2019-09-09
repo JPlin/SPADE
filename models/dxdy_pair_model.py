@@ -117,6 +117,7 @@ class DxdyPairModel(BaseModel):
 
         self.d_real_score, self.d_fake_score = self.netD(
             real_sample), self.netD(fake_sample)
+        # for vis
         self.mask_ = mask_
         
     def update_visuals(self):

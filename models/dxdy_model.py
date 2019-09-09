@@ -98,7 +98,7 @@ class DxdyModel(BaseModel):
         self.image = data['image'].to(self.device)
         self.mask = data['mask'].to(self.device)
         self.intensity = data['intensity'].to(self.device)
-        self.gt_dxdy = data['dxdy'].to(self.device)
+        self.gt_dxdy = data['dxdy'].to(torch.float).to(self.device)
         try:
             sample_data = next(self.sample_iter)
         except StopIteration:
