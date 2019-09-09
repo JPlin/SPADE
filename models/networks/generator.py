@@ -239,31 +239,31 @@ class Pix2PixHDGenerator(BaseNetwork):
         model = []
 
         # initial conv
-        model += [nn.ReflectionPad2d(opt.resnet_initial_kernel_size // 2),
-                  norm_layer(nn.Conv2d(input_nc, opt.ngf,
-                                       kernel_size=opt.resnet_initial_kernel_size,
+        model += [nn.ReflectionPad2d(opt['resnet_initial_kernel_size'] // 2),
+                  norm_layer(nn.Conv2d(input_nc, opt['ngf'],
+                                       kernel_size=opt['resnet_initial_kernel_size'],
                                        padding=0)),
                   activation]
 
         # downsample
         mult = 1
-        for i in range(opt.resnet_n_downsample):
-            model += [norm_layer(nn.Conv2d(opt.ngf * mult, opt.ngf * mult * 2,
+        for i in range(opt['resnet_n_downsample']):
+            model += [norm_layer(nn.Conv2d(opt['ngf'] * mult, opt['ngf'] * mult * 2,
                                            kernel_size=3, stride=2, padding=1)),
                       activation]
             mult *= 2
 
         # resnet blocks
-        for i in range(opt.resnet_n_blocks):
-            model += [ResnetBlock(opt.ngf * mult,
+        for i in range(opt['resnet_n_blocks']):
+            model += [ResnetBlock(opt['ngf'] * mult,
                                   norm_layer=norm_layer,
                                   activation=activation,
-                                  kernel_size=opt.resnet_kernel_size)]
+                                  kernel_size=opt['resnet_kernel_size'])]
 
         # upsample
-        for i in range(opt.resnet_n_downsample):
-            nc_in = int(opt.ngf * mult)
-            nc_out = int((opt.ngf * mult) / 2)
+        for i in range(opt['resnet_n_downsample']):
+            nc_in = int(opt['ngf'] * mult)
+            nc_out = int((opt['ngf'] * mult) / 2)
             model += [norm_layer(nn.ConvTranspose2d(nc_in, nc_out,
                                                     kernel_size=3, stride=2,
                                                     padding=1, output_padding=1)),
@@ -272,7 +272,7 @@ class Pix2PixHDGenerator(BaseNetwork):
 
         # final output conv
         model += [nn.ReflectionPad2d(3),
-                  nn.Conv2d(nc_out, opt.output_nc, kernel_size=7, padding=0),
+                  nn.Conv2d(nc_out, opt['output_nc'], kernel_size=7, padding=0),
                   nn.Tanh()]
 
         self.model = nn.Sequential(*model)
