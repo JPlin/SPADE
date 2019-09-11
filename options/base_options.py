@@ -20,9 +20,9 @@ class BaseOptions():
         # no dropout for the generator
         self.opt['no_dropout'] = False
         # number of iter at starting learning rate
-        self.opt['niter'] = 100
+        self.opt['niter'] = 50
         # number of iter to linearly decay learning rate to zero
-        self.opt['niter_decay'] = 100
+        self.opt['niter_decay'] = 50
         # multiply by a gamma every lr_decay_iters iterations
         self.opt['lr_decay_iters'] = 50
         self.opt['optimizer'] = 'adam'

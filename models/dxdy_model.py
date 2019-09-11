@@ -60,7 +60,7 @@ class DxdyModel(BaseModel):
         G_params = list(self.netG.parameters())
         D_params = list(self.netD.parameters())
         beta1, beta2 = opt['beta1'], opt['beta2']
-        G_lr, D_lr = opt['lr'], opt['lr']
+        G_lr, D_lr = opt.get('lr_G', opt['lr']), opt.get('lr_D', opt['lr'])
         self.optimizer_G = torch.optim.Adam(G_params,
                                             lr=G_lr,
                                             betas=(beta1, beta2))
@@ -144,10 +144,14 @@ class DxdyModel(BaseModel):
         self.d_real_score, self.d_fake_score = self.netD(
             real_sample), self.netD(fake_sample)
         # for vis
-        masked_pred_dxdy = torch.where(mask_ > 0., self.pred_dxdy,
+        self.mask_ = mask_
+
+    def update_visuals(self):
+        masked_pred_dxdy = torch.where(self.mask_ > 0., self.pred_dxdy,
                                        -torch.ones_like(self.pred_dxdy))
-        masked_gt_dxdy = torch.where(mask_ > 0., self.gt_dxdy,
+        masked_gt_dxdy = torch.where(self.mask_ > 0., self.gt_dxdy,
                                      -torch.ones_like(self.gt_dxdy))
+
         self.vis_dict['image'] = data_utils.make_grid_n(self.image[:6])
         self.vis_dict['gt_dxdy'] = data_utils.vis_orient(self.gt_dxdy[:6])
         self.vis_dict['pred_dxdy'] = data_utils.vis_orient(self.pred_dxdy[:6])
@@ -155,7 +159,7 @@ class DxdyModel(BaseModel):
             masked_pred_dxdy[:6])
         self.vis_dict['masked_gt_dxdy'] = data_utils.vis_orient(
             masked_gt_dxdy[:6])
-        self.vis_dict['strand_dxdy'] = data_utils.vis_orient(
+        self.vis_dict['render_dxdy'] = data_utils.vis_orient(
             self.strand_dxdy[:6])
 
     def backward_G(self):

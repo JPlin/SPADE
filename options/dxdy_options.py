@@ -18,6 +18,8 @@ class Xoptions(BaseOptions):
         self.opt['ngf'] = 64
         self.opt['dataset_name'] = 'orient'
         self.opt['im_size'] = 512
+        self.opt['lr_G'] = 0.0001
+        self.opt['lr_D'] = 0.0004
 
         # total epoch  = niter + niter_decay + 1
         # n_layers | multiscale | image
