@@ -166,15 +166,15 @@ class BaseModel():
                         # 'optimizer': optimizer.state_dict()
                     },
                     path)
-        torch.save(info, os.path.join(folder, "info"))
+        torch.save(info, os.path.join(folder, "info" + str(info['step'])))
         print("saved checkpoint to directory {}".format(
             os.path.abspath(folder)))
         # only save last 10 epoch of models
-        subfolder, now_epoch = folder.split('epoch')
-        delete_path = os.path.join(subfolder,
-                                   'epoch' + str(int(now_epoch) - 10))
-        if os.path.isdir(delete_path):
-            shutil.rmtree(delete_path)
+        # subfolder, now_epoch = folder.split('epoch')
+        # delete_path = os.path.join(subfolder,
+        #                            'epoch' + str(int(now_epoch) - 10))
+        # if os.path.isdir(delete_path):
+        #     shutil.rmtree(delete_path)
 
     @staticmethod
     # load networks
