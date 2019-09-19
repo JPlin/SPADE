@@ -30,13 +30,13 @@ def create_network(cls, opt):
 
 def define_G(opt, net_name=None):
     netG_cls = find_network_using_name(
-        opt['netG'] if net_name is not None else net_name, 'generator')
+        opt['netG'] if net_name is None else net_name, 'generator')
     return create_network(netG_cls, opt)
 
 
 def define_D(opt, net_name=None):
     netD_cls = find_network_using_name(
-        opt['netD'] if net_name is not None else net_name, 'discriminator')
+        opt['netD'] if net_name is None else net_name, 'discriminator')
     return create_network(netD_cls, opt)
 
 
