@@ -5,6 +5,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 
 import torch.nn as nn
 import numpy as np
+import math
 import torch.nn.functional as F
 from models.networks.base_network import BaseNetwork
 from models.networks.normalization import get_nonspade_norm_layer
@@ -130,3 +131,55 @@ class NLayerDiscriminator(BaseNetwork):
             return results[1:]
         else:
             return results[-1]
+
+
+class RealFakeDiscriminator(BaseNetwork):
+    @staticmethod
+    def default_opt():
+        return {
+            'RF_n_layers_D': 4,
+            'RF_size': 32,
+            'RF_in': 256,
+            'RF_nc': 64,
+            'RF_norm': 'spectralinstance'
+        }
+
+    @staticmethod
+    def modify_commandline_options(opt):
+        default_o = RealFakeDiscriminator.default_opt()
+        for k, v in default_o.items():
+            if k not in opt.keys():
+                opt[k] = v
+
+    def __init__(self, opt):
+        super().__init__()
+        self.opt = opt
+        RealFakeDiscriminator.modify_commandline_options(self.opt)
+
+        n = math.log2(opt['RF_size'])
+        assert n == round(n)
+        assert n >= 3
+        n = int(n)
+
+        in_c = opt['RF_in']
+        nc = opt['RF_nc']
+        norm_layer = get_nonspade_norm_layer(opt, opt['RF_norm'])
+        activation = nn.LeakyReLU(0.2, inplace=True)
+
+        model = [nn.Conv2d(in_c, nc, 4, 2, 1, bias=False), activation]
+        for i in range(n - 3):
+            model += [
+                norm_layer(
+                    nn.Conv2d(nc * 2**(i),
+                              nc * 2**(i + 1),
+                              4,
+                              2,
+                              1,
+                              bias=False)), activation
+            ]
+        model += [nn.Conv2d(nc * 2**(n - 3), 1, 4, 1, 0, bias=False)]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        x = self.model(x)
+        return x.view(-1, 1)

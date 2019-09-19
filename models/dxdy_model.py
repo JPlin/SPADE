@@ -134,6 +134,9 @@ class DxdyModel(BaseModel):
 
         # for G
         self.pred_dxdy = self.netG(torch.cat([self.image, mask_], dim=1))
+        if self.pred_dxdy.size(-1) != mask_.size(-1):
+            mask_ = torch.nn.functional.interpolate(
+                mask_, size=self.pred_dxdy.shape[-2:], mode='nearest')
         fake_sample = self.pred_dxdy * mask_.type(self.pred_dxdy.dtype)
         self.g_fake_score = self.netD(fake_sample)
         # for D
@@ -145,6 +148,19 @@ class DxdyModel(BaseModel):
             real_sample), self.netD(fake_sample)
         # for vis
         self.mask_ = mask_
+
+        # scale the size of everything
+        if self.pred_dxdy.size(-1) != self.mask.size(-1):
+            self.mask = torch.nn.functional.interpolate(
+                self.mask.unsqueeze(1),
+                size=self.pred_dxdy.shape[-2:],
+                mode='nearest').squeeze()
+            self.intensity = torch.nn.functional.interpolate(
+                self.intensity.unsqueeze(1),
+                size=self.pred_dxdy.shape[-2:],
+                mode='nearest').squeeze()
+            self.gt_dxdy = torch.nn.functional.interpolate(
+                self.gt_dxdy, size=self.pred_dxdy.shape[-2:], mode='nearest')
 
     def update_visuals(self):
         masked_pred_dxdy = torch.where(self.mask_ > 0., self.pred_dxdy,

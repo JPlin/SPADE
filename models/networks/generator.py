@@ -128,6 +128,7 @@ class Pix2PixHDGenerator(BaseNetwork):
     def default_opt():
         return {
             'resnet_n_downsample': 4,
+            'resnet_n_upsample': 4,
             'resnet_n_blocks': 9,
             'resnet_kernel_size': 3,
             'resnet_initial_kernel_size': 7,
@@ -184,7 +185,7 @@ class Pix2PixHDGenerator(BaseNetwork):
             ]
 
         # upsample
-        for i in range(opt['resnet_n_downsample']):
+        for i in range(opt['resnet_n_upsample']):
             nc_in = int(opt['ngf'] * mult)
             nc_out = int((opt['ngf'] * mult) / 2)
             model += [
@@ -219,3 +220,118 @@ class Pix2PixHDGenerator(BaseNetwork):
 
     def forward(self, input, z=None):
         return self.model(input)
+
+
+class FeatGenerator(BaseNetwork):
+    @staticmethod
+    def default_opt():
+        return {
+            'norm_FG': 'spectralinstance',
+            'FG_resnet_kernel_size': 3,
+            'FG_keep': 3,
+            'FG_c': 256
+        }
+
+    @staticmethod
+    def modify_commandline_options(opt):
+        default_o = FeatGenerator.default_opt()
+        for k, v in default_o.items():
+            if k not in opt.keys():
+                opt[k] = v
+
+    def __init__(self, opt):
+        super().__init__()
+        FeatGenerator.modify_commandline_options(opt)
+
+        input_nc = opt['FG_c']
+        keep_conv = opt['FG_keep']
+        norm_layer = get_nonspade_norm_layer(opt, opt['norm_FG'])
+        activation = nn.ReLU(True)
+
+        model = []
+        for i in range(keep_conv):
+            model += [
+                ResnetBlock(input_nc,
+                            norm_layer=norm_layer,
+                            activation=activation,
+                            kernel_size=opt['FG_resnet_kernel_size'])
+            ]
+        model += [nn.Conv2d(input_nc, input_nc, 1, 1, 0)]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        return self.model(x)
+
+
+class HairGenerator(BaseNetwork):
+    @staticmethod
+    def default_opt():
+        return {
+            'HG_resnet_kernel_size': 3,
+            'HG_neck_shape': [64, 4, 4],
+            'HG_up_c': [128, 128, 128],
+            'HG_keep_c': [128, 64, 32],
+            'HG_out_c': 3,
+            'HG_drop_out': False
+        }
+
+    @staticmethod
+    def modify_commandline_options(opt):
+        default_o = HairGenerator.default_opt()
+        for k, v in default_o.items():
+            if k not in opt.keys():
+                opt[k] = v
+
+    def __init__(self, opt):
+        super().__init__()
+        HairGenerator.modify_commandline_options(opt)
+
+        self.neck_shape = opt['HG_neck_shape']
+        self.up_c = opt['HG_up_c']
+        self.keep_c = opt['HG_keep_c']
+        self.out_c = opt['HG_out_c']
+        self.drop_out = opt['HG_drop_out']
+
+        last_c = self.neck_shape[0]
+
+        self.up_convs = []
+        for up_c_ in self.up_c:
+            self.up_convs += [
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.Conv2d(last_c, up_c_, 3, 1, 1, bias=False),
+                nn.BatchNorm2d(up_c_),
+                nn.ReLU(inplace=True)
+            ]
+            last_c = up_c_
+        self.up_convs = nn.Sequential(*self.up_convs)
+
+        self.keep_convs = []
+        for keep_c_ in self.keep_c:
+            self.keep_convs += [
+                nn.Conv2d(last_c, keep_c_, 1, 1, 0, bias=False),
+                nn.BatchNorm2d(keep_c_),
+                nn.ReLU(inplace=True)
+            ]
+            last = keep_c_
+        if self.drop_out:
+            self.keep_convs.append(nn.Dropout2d())
+        self.keep_convs = nn.Sequential(*self.keep_convs)
+
+        self.last_conv = nn.Conv2d(last_c, self.out_c, 1, 1, 0)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight,
+                                        mode='fan_out',
+                                        nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, input):
+        x = self.fc(input)
+        x = x.view([x.size(0)] + self.neck_shape)
+        x = self.up_convs(x)
+        x = self.keep_convs(x)
+        x = self.last_conv(x)
+        return x
